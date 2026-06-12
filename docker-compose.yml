@@ -1,0 +1,9 @@
+# Chạy frontend (backend chạy riêng trong repo timekeeping: docker compose up -d)
+services:
+  web:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+    ports:
+      - "3000:3000"
