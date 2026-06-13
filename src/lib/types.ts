@@ -235,3 +235,114 @@ export const CONTACT_LABELS: Record<string, string> = {
   URGENT_ONLY: "Chỉ khẩn cấp",
   UNAVAILABLE: "Không liên hệ",
 };
+
+// ---- departments (full) ----
+
+export interface DepartmentDetail {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  parentId: string | null;
+  manager: { id: string; fullName: string } | null;
+  memberCount: number;
+  isActive: boolean;
+}
+
+// ---- admin ----
+
+export interface Role {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  isSystem: boolean;
+  isActive: boolean;
+  permissionCodes: string[];
+}
+
+export interface Permission {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+}
+
+export interface StatusConfig {
+  code: string;
+  label: string;
+  color: string | null;
+  icon: string | null;
+  isSystem: boolean;
+  requiresReturnTime: boolean;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface AuditLogItem {
+  id: string;
+  actorId: string | null;
+  action: string;
+  targetType: string | null;
+  targetId: string | null;
+  details: Record<string, unknown> | null;
+  ipAddress: string | null;
+  createdAt: string;
+}
+
+export interface UserDetail {
+  id: string;
+  employeeCode: string;
+  fullName: string;
+  email: string;
+  avatarUrl: string | null;
+  department: { id: string; name: string } | null;
+  position: string | null;
+  currentStatus: { statusCode: string; statusLabel: string };
+  phone: string | null;
+  role: string | null;
+  managerId: string | null;
+  employmentStatus: string | null;
+}
+
+// ---- reports ----
+
+export interface DailyReport {
+  date: string;
+  departmentId: string | null;
+  totalEmployees: number;
+  started: number;
+  notStarted: number;
+  statusCounts: Record<string, number>;
+  overdue: number;
+}
+
+export interface UserReport {
+  userId: string;
+  fullName: string;
+  from: string | null;
+  to: string | null;
+  totalWorkingMinutes: number;
+  totalBreakMinutes: number;
+  totalMeetingMinutes: number;
+  totalOutingMinutes: number;
+  outingCount: number;
+  lateReturnCount: number;
+  entries: {
+    statusCode: string;
+    startedAt: string;
+    endedAt: string | null;
+    durationMinutes: number | null;
+    note: string | null;
+    lateReason: string | null;
+  }[];
+}
+
+export interface OutingReport {
+  from: string | null;
+  to: string | null;
+  departmentId: string | null;
+  total: number;
+  byStatus: Record<string, number>;
+  lateReturns: number;
+}

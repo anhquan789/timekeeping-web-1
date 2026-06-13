@@ -1,73 +1,68 @@
 # Company Status System — Web Frontend
 
-Web app cho hệ thống quản lý trạng thái nhân sự. Repo riêng để CI/CD deploy độc lập với backend ([timekeeping](../timekeeping)).
-
-- **Đợt 5:** Login + auth flow (refresh token tự động), layout sidebar/header, Dashboard trạng thái nhân viên (filter, summary, highlight quá giờ, real-time qua WebSocket), My Status (8 hành động nhanh + timeline hôm nay).
-- **Đợt 6:** Chat (danh sách hội thoại + unread badge, gửi/sửa/thu hồi tin, reaction, gửi/tải file, typing indicator, mark read, cảnh báo người nhận bận, real-time), Outing Requests (tạo, duyệt/từ chối với lý do, xác nhận quay lại + lý do muộn), Notifications (filter unread, mark read, điều hướng), Employees (tìm kiếm + nhắn tin nhanh).
-
-Còn lại: Departments, Reports, Admin pages.
+Frontend Next.js cho hệ thống quản lý trạng thái nhân sự + chat nội bộ. Kết nối với backend Spring Boot tại [timekeeping](https://github.com/rare-base/timekeeping).
 
 ## Tech stack
 
-Next.js 14 (App Router, standalone output), TypeScript, Tailwind CSS, TanStack Query, Zustand, @stomp/stompjs (WebSocket real-time).
+Next.js 14 (App Router, standalone output), TypeScript, Tailwind CSS, TanStack Query v5, Zustand v4, @stomp/stompjs v7.
+
+## Tính năng
+
+- **Dashboard** — bảng trạng thái nhân viên toàn công ty, filter theo phòng ban/trạng thái/tìm kiếm/quá giờ, real-time qua WebSocket STOMP
+- **My Status** — xem + cập nhật trạng thái cá nhân (8 nút: bắt đầu, nghỉ trưa, giải lao, họp, ra ngoài, làm remote, quay lại, kết thúc), timeline hôm nay
+- **Chat** — chat cá nhân, nhóm, phòng ban; upload file; typing indicator; reaction; sửa/thu hồi tin nhắn; real-time STOMP
+- **Outing Requests** — tạo yêu cầu ra ngoài, xem lịch sử, duyệt/từ chối/trả lại (phân quyền)
+- **Notifications** — danh sách thông báo, lọc chưa đọc, đánh dấu đã đọc, deep link
+- **Employees** — danh sách nhân viên, tìm kiếm, nhắn tin nhanh
+- **Departments** — CRUD phòng ban, gán manager (phân quyền)
+- **Reports** — báo cáo theo ngày / theo nhân viên / ra ngoài, export CSV + Excel (phân quyền)
+- **Admin** — quản lý User, Role & quyền, Trạng thái custom, Cấu hình hệ thống, Audit log (phân quyền)
 
 ## Chạy local
 
-Yêu cầu: backend đang chạy ở `http://localhost:8080` (xem repo `timekeeping`: `docker compose up -d --build`).
-
 ```bash
-# Cách 1: Docker (không cần Node)
-docker compose up -d --build
-
-# Cách 2: Node 20+
+cp .env.local.example .env.local   # đặt NEXT_PUBLIC_API_URL=http://localhost:8080
 npm install
 npm run dev
 ```
 
-Mở http://localhost:3000 — đăng nhập bằng account seed, ví dụ `admin@example.com` / `Password123!`.
+Truy cập http://localhost:3000. Backend phải đang chạy (xem README backend).
 
-## Cấu hình
+## Biến môi trường
 
-| Biến | Mặc định | Ý nghĩa |
+| Biến | Mô tả | Mặc định |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8080` | URL backend nhìn từ **trình duyệt**. Được nhúng lúc build (Docker build arg). |
+| `NEXT_PUBLIC_API_URL` | URL backend API | `http://localhost:8080` |
 
-Backend phải cho phép CORS từ origin của web (env `WEB_URL` trong repo backend, mặc định `http://localhost:3000`).
+## Chạy bằng Docker
 
-## Cấu trúc
-
-```
-src/
-  app/
-    login/page.tsx          # trang đăng nhập
-    (app)/layout.tsx        # protected shell (AuthGate + Sidebar + Header)
-    (app)/page.tsx          # Dashboard
-    (app)/my-status/        # My Status
-    (app)/chat/             # Chat (2 cột: danh sách + cửa sổ chat)
-    (app)/outing-requests/  # Tạo + duyệt yêu cầu ra ngoài
-    (app)/notifications/    # Thông báo
-    (app)/employees/        # Danh bạ nhân viên
-    providers.tsx           # React Query + Toast
-  lib/
-    api.ts                  # fetch wrapper: tự refresh token khi 401 (single-flight) + authFetch cho file
-    auth-store.ts           # Zustand: access token (memory) + refresh token (localStorage)
-    ws.ts                   # STOMP: /topic/status + /topic/conversations/{id} + typing publish
-    types.ts, format.ts, toast.ts
-  components/               # StatusBadge, Modal, Sidebar, Header, StatusActions, chat/*
+```bash
+docker compose up -d --build
 ```
 
-## Auth flow
+Web: http://localhost:3000. Yêu cầu backend đang chạy và `NEXT_PUBLIC_API_URL` trỏ đúng.
 
-Access token giữ trong memory (mất khi refresh trang), refresh token trong localStorage. Khi mở trang hoặc gặp 401: tự gọi `/auth/refresh-token` (rotation) rồi retry; thất bại → về `/login`.
+## Auth
 
-## CI/CD
+- Access token lưu trong Zustand (in-memory), refresh token trong localStorage
+- Tự động refresh khi nhận 401 (single-flight — không bắn nhiều request cùng lúc)
+- Bootstrap auth khi load app: gọi `/auth/me` để lấy lại user sau khi refresh tab
 
-`.github/workflows/ci.yml`: type-check (`tsc --noEmit`) → `next build` → Docker build. Deploy: image Docker chạy `node server.js` (standalone), port 3000 — truyền `NEXT_PUBLIC_API_URL` làm build arg trỏ tới API production.
+## Phân quyền trên UI
 
-## Test thủ công nhanh
+| Tính năng | Quyền cần có |
+|---|---|
+| Duyệt outing | `outing.approve` |
+| Departments CRUD | `department.manage` |
+| Reports | `status.read.all` hoặc `status.read.department` |
+| Admin > Users | `user.create` hoặc `user.update.any` |
+| Admin > Roles | `role.manage` |
+| Admin > Status configs | `settings.manage` |
+| Admin > Cấu hình | `settings.manage` |
+| Admin > Audit log | `audit.read` |
 
-1. Login admin → Dashboard với 7 nhân viên seed, filter hoạt động.
-2. My Status → "Bắt đầu làm việc" → badge header đổi; tab khác login user khác → dashboard tự cập nhật (WebSocket).
-3. Chat → mở hội thoại seed (sales1 ↔ sales2), gửi tin ở 2 tab → tin hiện real-time, typing indicator, unread badge giảm sau khi đọc.
-4. Gửi file trong chat (📎) → người nhận tải được; file .exe bị từ chối.
-5. Outing Requests → employee tạo yêu cầu → manager.sales thấy tab "Chờ tôi duyệt" → duyệt/từ chối → employee nhận notification (badge sidebar).
+## WebSocket
+
+Kết nối tới `WS_URL` (mặc định `ws://localhost:8080/ws`) với header `Authorization: Bearer <token>`:
+- `/topic/status` — cập nhật trạng thái real-time trên Dashboard
+- `/topic/conversations/{id}` — sự kiện chat (message, reaction, typing, read receipt)
